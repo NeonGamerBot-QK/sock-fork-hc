@@ -4,7 +4,7 @@ import { createWakaUser } from "./waka";
 import { getSecondsCoded, getSecondsCodedTotal, setUpDb, track } from "./db";
 import { registerJobs } from "./jobs";
 import { buildSockView } from "./ui";
-
+import { getUsername } from "./utils"
 await setUpDb();
 
 if (!process.env.EVENT_CHANNEL) {
@@ -545,7 +545,7 @@ app.command("/sock-board", async ({ ack, body, client, logger }) => {
               : "";
 
       return `${medal} ${clan_name}: ${(total_seconds_coded / 60 / 60).toFixed(1)} hours`;
-    },
+    },.join("\n");
   );
 
   await client.chat.postMessage({
@@ -595,8 +595,8 @@ app.command("/sock-team", async ({ ack, body, client, logger }) => {
 
   stats.sort((a, b) => b[2] - a[2]);
 
-  const board = stats
-    .map(([slackId, coded, totalCoded], idx) => {
+  const board = await Promise.all(stats
+    .map(async ([slackId, coded, totalCoded], idx) => {
       let medal =
         idx === 0
           ? ":first_place_medal: "
@@ -606,9 +606,9 @@ app.command("/sock-team", async ({ ack, body, client, logger }) => {
               ? ":third_place_medal: "
               : "";
 
-      return `${medal}<@${slackId}> coded ${(totalCoded / 3600).toFixed(1)} hours total (${(coded / 60).toFixed(1)} mins today)`;
-    })
-    .join("\n");
+      return `${medal} \`@${await getUsername(slackId)}\` coded ${(totalCoded / 3600).toFixed(1)} hours total (${(coded / 60).toFixed(1)} mins today)`;
+    })).then(d=>d.join("\n");)
+    
 
   await client.chat.postMessage({
     channel: body.channel_id,
